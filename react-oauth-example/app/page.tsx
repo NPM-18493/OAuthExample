@@ -57,6 +57,8 @@ export default function Home() {
           'scope': scope,
           code_challenge: code_challenge,
           code_challenge_method: 'S256',
+          access_type: "offline",
+          prompt: "consent",
         });
 
         // optional: add scope if you need it
@@ -64,7 +66,7 @@ export default function Home() {
 
         window.location.href = `${oauthUri}?${params.toString()}`;
       }
-      else{
+      else {
         router.push('/weather');
       }
     };
@@ -76,8 +78,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-
-
+        <h1>Welcome to OAuth Example</h1>
       </main>
     </div>
   );
