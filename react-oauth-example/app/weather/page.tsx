@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import api from "../lib/apiClient";
 
 type Forecast = {
   date: string;
@@ -23,24 +24,9 @@ export default function WeatherPage() {
     }
 
     (async () => {
-      try {
-        const base = process.env.NEXT_PUBLIC_BACKEND_BASE_URL
-          ? process.env.NEXT_PUBLIC_BACKEND_BASE_URL.replace(/\/$/, "")
-          : "http://localhost:5188";
-
-        const res = await fetch(`${base}/weatherforecast`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Fetch failed: ${res.status} ${text}`);
-        }
-
-        const json = (await res.json()) as Forecast[];
-        setData(json);
+      try { 
+        const response = await api.get<Forecast[]>("/weatherforecast");
+        setData(response.data);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e ?? "Failed to fetch weather data");
         setError(message);

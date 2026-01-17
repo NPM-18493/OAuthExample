@@ -12,7 +12,7 @@ type UserInfo = {
 };
 
 export default function GoogleSignInPage() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+
   const [idToken, setIdToken] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -66,13 +66,16 @@ export default function GoogleSignInPage() {
         const tokenJson = tokenRes.data;
         const accessToken = tokenJson.access_token ?? tokenJson.accessToken ?? null;
         const idToken = tokenJson.id_token ?? tokenJson.idToken ?? null;
-        if (!accessToken) {
-          throw new Error("No access_token returned from backend");
+        const refreshToken = tokenJson.refresh_token ?? tokenJson.refreshToken ?? null;
+        if (!idToken) {
+          throw new Error("No id_token returned from backend");
         }
 
         sessionStorage.setItem("access_token", accessToken);
         sessionStorage.setItem("id_token", idToken || "");
-        setAccessToken(accessToken);
+        sessionStorage.setItem("refresh_token", refreshToken || "");
+
+        setIdToken(idToken);
         // navigate to weather page after receiving token
         router.push("/weather");
       } catch (e: any) {
@@ -87,6 +90,7 @@ export default function GoogleSignInPage() {
     const redirect = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI || "";
     const scope = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_SCOPE || "email profile";
     const responseType = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_RESPONSE_TYPE || "token";
+    const access_type = "offline";
 
     const params = new URLSearchParams({
       client_id: clientId,
@@ -95,6 +99,7 @@ export default function GoogleSignInPage() {
       scope,
       include_granted_scopes: "true",
       prompt: "consent",
+      access_type,
     });
 
     return `${base}?${params.toString()}`;
@@ -104,7 +109,7 @@ export default function GoogleSignInPage() {
     <main style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", padding: 24 }}>
       <h1>Google Sign-in</h1>
 
-      {!accessToken && (
+      {!idToken && (
         <>
           <p>Click the button below to sign in with Google (opens same window).</p>
           <a href={buildAuthUrl()} style={{ padding: "8px 16px", background: "#1a73e8", color: "white", borderRadius: 6, textDecoration: "none" }}>
@@ -113,7 +118,7 @@ export default function GoogleSignInPage() {
         </>
       )}
 
-      {accessToken && !user && !error && <p>Signed in — fetching profile…</p>}
+      {idToken && !user && !error && <p>Signed in — fetching profile…</p>}
 
       {error && (
         <div style={{ color: "#b00020" }}>
@@ -131,7 +136,7 @@ export default function GoogleSignInPage() {
             <div style={{ marginTop: 8 }}>
               <button
                 onClick={() => {
-                  setAccessToken(null);
+                  setIdToken(null);
                   setUser(null);
                 }}
                 style={{ padding: "6px 12px", borderRadius: 6 }}
@@ -143,10 +148,9 @@ export default function GoogleSignInPage() {
         </div>
       )}
 
-      {accessToken && (
+      {idToken && (
         <div style={{ marginTop: 12, maxWidth: 640, wordBreak: "break-all" }}>
-          <label style={{ fontSize: 12, color: "#666" }}>Access token (masked):</label>
-          <div style={{ background: "#f5f5f5", padding: 8, borderRadius: 6 }}>{accessToken.slice(0, 8)}…{accessToken.slice(-8)}</div>
+          <label style={{ fontSize: 12, color: "#666" }}>ID token received!</label>
         </div>
       )}
     </main>

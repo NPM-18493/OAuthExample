@@ -105,11 +105,54 @@ app.MapGet("/weatherforecast", () =>
 
 // As Google's OAuth PKCE asks for Client Secret on SPA as well, we need to exchange the authorization code for tokens on the backend
 app.MapPost("/exchange-code", async (HttpContext http, IConfiguration config) =>
+ {
+     var form = await http.Request.ReadFormAsync();
+     var code = form["code"].ToString();
+     var codeVerifier = form["code_verifier"].ToString();
+     var redirectUri = form["redirect_uri"].ToString();
+
+     var clientId = config["Authentication:Google:ClientId"];
+     var clientSecret = config["Authentication:Google:ClientSecret"];
+
+     using var httpClient = new HttpClient();
+     var tokenRequest = new HttpRequestMessage(HttpMethod.Post, "https://oauth2.googleapis.com/token");
+
+     var postParams = new Dictionary<string, string>
+    {
+        { "code", code },
+        { "client_id", clientId ?? "" },
+        { "client_secret", clientSecret ?? "" },
+        { "redirect_uri", "http://localhost:3000/google-sign-in" },
+        { "grant_type", "authorization_code" }
+    };
+
+     if (!string.IsNullOrEmpty(redirectUri))
+     {
+         postParams["redirect_uri"] = redirectUri;
+     }
+
+     if (!string.IsNullOrEmpty(codeVerifier))
+     {
+         postParams["code_verifier"] = codeVerifier;
+     }
+
+     tokenRequest.Content = new FormUrlEncodedContent(postParams);
+
+     var response = await httpClient.SendAsync(tokenRequest);
+     if (!response.IsSuccessStatusCode)
+     {
+         return Results.Problem("Failed to exchange authorization code for tokens", statusCode: 500);
+     }
+
+     var content = await response.Content.ReadAsStringAsync();
+     return Results.Content(content, "application/json");
+ });
+
+// api to get new id token using refresh token
+app.MapPost("/refresh-token", async (HttpContext http, IConfiguration config) =>
 {
     var form = await http.Request.ReadFormAsync();
-    var code = form["code"].ToString();
-    var codeVerifier = form["code_verifier"].ToString();
-    var redirectUri = form["redirect_uri"].ToString();
+    var refreshToken = form["refresh_token"].ToString();
 
     var clientId = config["Authentication:Google:ClientId"];
     var clientSecret = config["Authentication:Google:ClientSecret"];
@@ -119,29 +162,18 @@ app.MapPost("/exchange-code", async (HttpContext http, IConfiguration config) =>
 
     var postParams = new Dictionary<string, string>
     {
-        { "code", code },
         { "client_id", clientId ?? "" },
         { "client_secret", clientSecret ?? "" },
-{ "redirect_uri", "http://localhost:3000/google-sign-in" },
-        { "grant_type", "authorization_code" }
+        { "refresh_token", refreshToken },
+        { "grant_type", "refresh_token" }
     };
-
-    if (!string.IsNullOrEmpty(redirectUri))
-    {
-        postParams["redirect_uri"] = redirectUri;
-    }
-
-    if (!string.IsNullOrEmpty(codeVerifier))
-    {
-        postParams["code_verifier"] = codeVerifier;
-    }
 
     tokenRequest.Content = new FormUrlEncodedContent(postParams);
 
     var response = await httpClient.SendAsync(tokenRequest);
     if (!response.IsSuccessStatusCode)
     {
-        return Results.Problem("Failed to exchange authorization code for tokens", statusCode: 500);
+        return Results.Problem("Failed to refresh tokens", statusCode: 500);
     }
 
     var content = await response.Content.ReadAsStringAsync();
